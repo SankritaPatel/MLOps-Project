@@ -5,9 +5,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.model_selection import train_test_split
 from scipy.sparse import hstack
 from src.utils import clean_text
-import logging
-
-logger = logging.getLogger(__name__)
+from src.logger import logging
 
 class DataTransformer:
     def __init__(self):
@@ -18,17 +16,17 @@ class DataTransformer:
 
     def transform(self, df: pd.DataFrame):
         if df.empty:
-            logger.error("DataFrame is empty.")
+            logging.error("DataFrame is empty.")
             raise ValueError("Empty dataframe received for transformation.")
 
-        logger.info("Starting transformation.")
+        logging.info("Starting transformation.")
         df = df.copy()
         df['short_summary'] = df['short_summary'].fillna("").astype(str).apply(clean_text)
         df['industry'] = df['industry'].fillna("unknown").astype(str)
 
         y = self.label_encoder.fit_transform(df['industry'])
         self.class_names = list(self.label_encoder.classes_)
-        logger.info(f"Encoded target variable: {self.class_names}")
+        logging.info(f"Encoded target variable: {self.class_names}")
 
         X_text = self.vectorizer.fit_transform(df['short_summary'])
         text_features = list(self.vectorizer.get_feature_names_out())
@@ -44,9 +42,9 @@ class DataTransformer:
             X_combined = X_text
             self.feature_names = text_features
 
-        logger.info(f"Feature matrix shape: {X_combined.shape}")
+        logging.info(f"Feature matrix shape: {X_combined.shape}")
         return X_combined, y
 
     def split_data(self, X, y, test_size=0.2, random_state=42):
-        logger.info("Splitting data into train and test sets.")
+        logging.info("Splitting data into train and test sets.")
         return train_test_split(X, y, test_size=test_size, random_state=random_state)

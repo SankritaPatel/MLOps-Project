@@ -1,14 +1,16 @@
 import mlflow
 from src.components.data_ingestion import load_sample_data
 from src.components.data_transformation import DataTransformer
+from src.components.model_trainer import ModelTrainer
+from src.mlflow_manager import MLflowManager
 from src.logger import logging
 
 def main():
     logging.info("Pipeline execution started.")
-
-    with mlflow.start_run(run_name="data_pipeline") as run:
+    ml_manager = MLflowManager(experiment_name="mlops_pipeline")
+    with ml_manager.start_run(run_name="data_pipeline") as run:
         logging.info(f"MLflow run started with ID: {run.info.run_id}")
-
+        # Data Pipeline
         df = load_sample_data()
         transformer = DataTransformer()
         X, y = transformer.transform(df)
@@ -17,14 +19,22 @@ def main():
         logging.info(f"Train shape: {X_train.shape}, Test shape: {X_test.shape}")
         logging.info(f"Target classes: {transformer.class_names}")
 
-        mlflow.log_param("num_classes", len(transformer.class_names))
-        mlflow.log_param("train_samples", X_train.shape[0])
-        mlflow.log_param("test_samples", X_test.shape[0])
+        ml_manager.log_params({"num_classes": len(transformer.class_names)})
+        ml_manager.log_params({"train_samples": X_train.shape[0]})
+        ml_manager.log_params({"test_samples": X_test.shape[0]})
 
-        
-        if hasattr(logging, "_log_path"):
-            mlflow.log_artifact(logging._log_path, artifact_path="logs")
-            logging.info(f"Log file logged to MLflow: {logging._log_path}")
+
+        # Model Training and Evaluation
+        trainer = ModelTrainer()
+        model = trainer.train(X_train, y_train)
+        acc, report = trainer.evaluate(X_test, y_test)
+
+        logging.info(f"Model Accuracy: {acc:.4f}")
+        logging.info(f"Evaluation Report: {report}")
+
+        trainer.log_to_mlflow(acc, report)
+
+        ml_manager.log_logs_as_artifact(logging)
 
     logging.info("Pipeline execution completed.")
 
